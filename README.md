@@ -3,7 +3,7 @@ Reinforcement learning application to microreactor criticality search and power 
 
 ## Paper
 
-**Extended Version in the PHYSOR 2024 Special Issue:**
+**Extended Version in the PHYSOR 2024 Special Issue (Paper is published as Open-Access):**
 
 Radaideh, M. I., Tunkle, L., Price, D., Abdulraheem, K., Lin, L., & Elias, M. (2025). Multistep Criticality Search and Power Shaping in Nuclear Microreactors with Deep Reinforcement Learning. Nuclear Science and Engineering, 1-13. https://doi.org/10.1080/00295639.2024.2447012
 
