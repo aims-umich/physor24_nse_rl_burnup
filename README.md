@@ -16,49 +16,46 @@ Radaideh, M. I., Price, D., Abdulraheem, K., & Elias, M. (2024, April). Demonstr
 To set up the environment for this project, follow these steps:
 
 ```bash
-# 1. Create a new conda environment with Python 3.10
-conda create -n teds python=3.10
+# 1. Create a new conda environment with name (`rlmicro`) using an external YAML file that contains all packages with the right versions
+conda env create -f rlmicro.yml
 
 # 2. Activate the environment
-conda activate teds
+conda activate rlmicro
 
-# 3. Install pyMAISE from GitHub
-pip install git+https://github.com/myerspat/pyMAISE.git
-
-# 4. Install SALib
-pip install SALib
-
-# 5. Install Jupyter and Papermill for notebook execution
+# 3. Install Jupyter and Papermill for notebook execution if needed
 pip install jupyter papermill
 
 ```
 
 ## How to generate the results
 
-- `data`: contains the input and output data files as numpy data arrays. This data is used by parts 1&2.  
+- `NPIC_EMD`: Contains the neural network surrogate models based on Serpent burnup calculations, which are described in the two papers. These surrogate models will be loaded from pre-trained images built using keras/TF and are used to make predictions of `keff` and `QPTR` based on the drum angles (theta1, ..., theta6).  **Leave this directory untouched**.
 
-- Step 1: Go to the folder `part1_surrogate_pymaise` and run the following notebook (it takes quite some time to finish)
+- `source`: Contains some source Python scripts used by the RL training scripts, which basically includes the gym environment built for the microreactor model under `./source/env.py`.  **You may leave this directory untouched as well**. 
+
+- Step 1a (PPO policy training): Make sure you have 20 cores available or change the `num_cpu` variable in `ppo_control.py` to fit the number of cores you have. This script runs on CPU as we will assume you have no GPU available. You may configure the script to run on GPU on your own by changing the argument `device` in the PPO class. **Then run the script below which will take about 60 min to complete training**. 
 
   ```bash
-  papermill inl_teds_pymaise.ipynb inl_teds_pymaise_out.ipynb
+  python ppo_control.py
   ```
-  or
-  ```bash
-  nohup papermill inl_teds_pymaise.ipynb inl_teds_pymaise_out.ipynb &
-  ```
+
+  Results will be saved to the directory `./ppo_nsteps_300` which contains 4 main files as follows:
+
+  - `ppo_best_model.pkl`: The best PPO model image found during training based on epoch mean reward. 
+  - `ppo_last_model.pkl`: The last PPO model image found by the last epoch of the training (not necessarily the best). 
+  - `ppo_log.csv`: A CSV logger generated during training that logs the important data collected by the agent. 
+  - `ppo_plt.png`: A plot of `keff`, `QPTR`, and `Reward` as a function of epochs, which gets updated during training. This plot is generated online using the data from `ppo_log.csv`.
+
+- Step 1b (PPO policy testing): After Step 1a is completed, open `ppo_control.py` and change the variable `run_mode = train` to `run_mode = test`. By default, you will notice that the variable `model_path= './ppo_nsteps_300/ppo_best_model.pkl'` will read the best PPO model image from the result directory created by Step 1a. You may change the path to the last model if you like. Then run the script again which will take a couple of seconds where the policy will be tested: 
   
-  Results will be saved to the directory `./part1_surrogate_pymaise/results`
-
-- Step 2: Go to the folder `part2_sensitivity` and run the following script
-  
   ```bash
-  python sensitivity.py
+  python ppo_control.py
   ```
-  Results will be saved to the directory `./part2_sensitivity/nn_results` for the NN surrogate, `./part2_sensitivity/sobol_results` for Sobol indices, and `./part2_sensitivity/fast_results` for FAST results.
+  Results will be saved to a CSV file called `ppo_test.csv` which will be in the same level as `ppo_control.py`.
+
+- Step 2 (A2C Policy Training and Testing): A2C policy follows the exact same instructions as PPO above for training and testing, except that you should use `a2c_control.py` and all results will have `a2c_*` as a prefix instead of `ppo_*`. Note that the paper reports that PPO was significantly better in performance than A2C, so you may skip running this model if you wish. 
 
 ## Notes 
-  - Under `sobol_results` and `fast_results`, sensors #1 and #7 correspond to `TE_4` and `TW_1` sensors which have the results given in Figure 7 and Figure 8 in the paper.
-  - Part 1 results from pyMAISE should generate what you see in Figures 4-6 of the paper. The notebook output in Part 1 includes the metrics in Table 1.   
-  - Please note that Sobol and Fast results in Part 2 may have the input parameter ranking switched a little bit due to the randomness of the Monte Carlo methods used to estimate the indices. However, the dominant inputs should remain the same and ranking differences should occur in less dominant inputs. 
-
+  - The directory `paper_results` includes the pre-trained PPO and A2C image files, CSV loggers, and the PNG plots that were reported in the NSE journal paper including the main Figure 4 in the NSE journal paper. Note that we provide these files as a reference to the user but you can regenerate those on your own as described above. We also report some other results from hyperparameter tuning attempts under `./paper_results/other_results_log` that were not promising, also for reference. 
+  - *Important Note*: Please note that, due to the nature of reinforcement learning (RL) training—including factors like starting from a suboptimal initial policy, random seeds, and the overall stochasticity of the process—reproducing the exact same policy results reported in the paper can be quite difficult. The authors automated the training process by running 5–10 policies with identical settings and reporting the best-performing one. On average, however, you should still achieve results that are comparable to those in the paper. In particular, you should consistently observe that PPO outperforms A2C, even if your exact numbers differ from ours.    
 
